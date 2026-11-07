@@ -1,0 +1,30 @@
+name: Compiler container
+on:
+  workflow_dispatch:
+jobs:
+  compiler:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build compiler image
+        run: docker build -f service/Dockerfile -t crab-compiler-test .
+      - name: Start isolated compiler preview
+        run: |
+          COMPILER_TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$COMPILER_TOKEN"
+          echo "COMPILER_TOKEN=$COMPILER_TOKEN" >> "$GITHUB_ENV"
+          docker run -d --name compiler --read-only --tmpfs /tmp:rw,nosuid,noexec,size=384m,uid=1000,gid=1000 --memory 768m --cpus 2 --pids-limit 80 --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:4319:4319 -e COMPILER_TOKEN="$COMPILER_TOKEN" crab-compiler-test
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:4319/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs compiler
+          exit 1
+      - name: Check real compilation and filesystem isolation
+        run: node tests/hosted-compiler.mjs
+      - name: Compiler logs
+        if: failure()
+        run: docker logs compiler || true

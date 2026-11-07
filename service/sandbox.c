@@ -12,6 +12,9 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#ifndef LANDLOCK_ACCESS_FS_TRUNCATE
+#define LANDLOCK_ACCESS_FS_TRUNCATE (1ULL << 14)
+#endif
 
 /* Apply restrictions to Arduino CLI and every compiler child. Fail closed. */
 static void fail(const char *message) { perror(message); exit(126); }
