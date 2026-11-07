@@ -8,8 +8,8 @@ A standalone React/Vite build of the CRAB Arduino workbench, redesigned around t
 - Netlify project: https://app.netlify.com/projects/crab-code-lab
 - Team: `ethan-wong38`
 - Project ID: `08aeb05d-6761-4d1f-a721-1038020a8f5a`
-- Initial production deploy: `6aee8dffa42124bbb0a353d1`
-- The editor, local draft saving, C++ export, and the API function are published. The free Render compiler has passed real compilation and isolation checks. Automatic Resend email is awaiting its credential.
+- Current production deploy: `6aef44338c8f5cf00db36c55`
+- The editor, local draft saving, C++ export, API function, and real Arduino compilation are live. The public Verify button compiled Blink successfully (924 bytes of program storage and 9 bytes of RAM). The live Netlify API also rejected invalid C++ with source diagnostics. Automatic Resend email is awaiting its credential.
 - No existing Netlify project was replaced. This is a manual CLI deployment; automatic Git deployments are not configured.
 
 To publish a later revision, install the official Netlify CLI and run `netlify deploy --prod --site 08aeb05d-6761-4d1f-a721-1038020a8f5a` from this project folder. Log in to the same account when prompted. The CLI builds the project and packages its function.
@@ -25,13 +25,13 @@ To publish a later revision, install the official Netlify CLI and run `netlify d
 
 Netlify’s Functions runtime reads these variables from its environment. Do not put secrets in `netlify.toml`, public files, or variables prefixed with `VITE_`.
 
-The frontend still opens and saves drafts before compiler setup. It displays **Compiler offline** until the service is connected. Verification and submission remain unavailable until real compilation succeeds.
+The live site displays **Compiler connected** while the Render service is awake. Render Free sleeps after idle periods; the first request can take about a minute to wake it and may need a retry. Verification and submission always require a real successful compile of the current source.
 
 Import the source project rather than dragging only `dist` into Netlify: the compiler API needs the included Netlify Function, which is outside the static publish directory. A static-only upload supplies the editor and downloads but omits those API routes.
 
 ## Render compiler hosting
 
-`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. Render is connected to Ethan’s workspace, and the private source repository is https://github.com/EthycaWong/crab-code-lab. The free compiler service is https://crab-arduino-compiler.onrender.com, managed at https://dashboard.render.com/web/srv-dbn9abp5efls73am2ufg. Its initial deploy and a subsequent deploy succeeded. Automatic deployments are off; publishing a source commit does not redeploy the compiler until a manual deploy is triggered.
+`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. Render is connected to Ethan’s workspace, and the private source repository is https://github.com/EthycaWong/crab-code-lab. The free compiler service is https://crab-arduino-compiler.onrender.com, managed at https://dashboard.render.com/web/srv-dbn9abp5efls73am2ufg. The current deploy is `dep-dbnk8nh5efls73bj4i9g` from commit `79e2910`; it includes Resend support and is live. Automatic deployments are off; publishing a source commit does not redeploy the compiler until a manual deploy is triggered.
 
 When creating it through the dashboard, select Docker, the repository root as the build context, `./service/Dockerfile` as the Dockerfile, and Free as the instance type. The server accepts Render's `PORT` variable. `/health` exposes only `{ "ok": true }`; compiler status and code endpoints still require the shared token.
 
@@ -118,7 +118,7 @@ npm test
 
 The static Netlify build and TypeScript checks passed. Netlify handler tests check offline behavior, forwarding of exact source with server-only credentials, trusted client IP handling, and rejection of cross-origin submissions. Arduino CLI tests compile a valid sketch and reject a broken one with a source line, and check submission tickets. Uno, Nano, and Mega builds passed on the development machine.
 
-The VS Code-inspired UI was checked at desktop and mobile sizes, including the explorer, real file tabs, per-file undo history, Go to File, board drawer, dialogs, output toggling, reduced-motion mode, and real compilation from the toolbar. Explorer interpolation and the indeterminate build animation were inspected during use. Netlify production deployment was completed and the live editor and offline API response were checked. The hosting health/authentication test passed. The Docker image passed real compiler and filesystem-isolation checks on a Linux runner. Render deployment passed valid and invalid builds plus file-isolation checks. Real email delivery is awaiting a Resend key and a permitted test message. No real email was sent during development.
+The VS Code-inspired UI was checked at desktop and mobile sizes, including the explorer, real file tabs, per-file undo history, Go to File, board drawer, dialogs, output toggling, reduced-motion mode, and real compilation from the toolbar. Explorer interpolation and the indeterminate build animation were inspected during use. Netlify production deployment was completed. The live Verify button compiled Blink, a malformed sketch was rejected through the public API with source diagnostics, and the downloaded Blink.cpp contained the complete source. The compiler credential was absent from all 13 public build files. The hosting health/authentication test passed. The Docker image passed real compiler and filesystem-isolation checks on a Linux runner. Render deployment passed valid and invalid builds plus file-isolation checks. Real email delivery is awaiting a Resend key and a permitted test message. No real email was sent during development.
 
 ## Documentation
 
