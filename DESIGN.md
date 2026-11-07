@@ -23,3 +23,7 @@ Code stays still during typing. The operating system's reduced-motion preference
 Inspected the installed Arduino IDE and a settled VS Code window. The reference informed the compact title bar, activity rail, file tabs, explorer, outline, and status bar. CRAB retains its own logo and red accents.
 
 Browser checks verified the explorer's interpolated widths, reduced-motion zero-duration behavior, live compile animation, file search, per-file undo isolation, dialogs, responsive fit, and successful real Arduino compilation. The Netlify build and TypeScript checks passed. Backend hosting and SMTP requirements are unchanged; see README.md.
+
+## Classroom access
+
+The password screen inherits the workbench's charcoal surfaces, native UI type, Plex Mono details, square controls, and red CRAB accent. A compact application frame pairs the supplied logo with one password field. Entrance motion is short and the caret respects reduced motion. Mobile rearranges the logo and name above the form. The owner page uses the same frame and adds owner-key and new-password fields. Both screens were inspected at desktop and 390px mobile width.

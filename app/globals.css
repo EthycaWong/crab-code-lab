@@ -22,3 +22,5 @@
 /* Short viewports scroll the complete workspace instead of clipping controls. */
 .lab{min-height:700px}.editor-tab{transition:background 120ms,color 120ms,border-color 180ms}
 @media(max-width:700px){.lab{min-height:700px}}
+
+.topnav form{display:contents}

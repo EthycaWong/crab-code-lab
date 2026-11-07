@@ -14,6 +14,18 @@ A standalone React/Vite build of the CRAB Arduino workbench, redesigned around t
 
 To publish a later revision, install the official Netlify CLI and run `netlify deploy --prod --site 08aeb05d-6761-4d1f-a721-1038020a8f5a` from this project folder. Log in to the same account when prompted. The CLI builds the project and packages its function.
 
+## Classroom password and owner controls
+
+The hosted website is protected by a CRAB password screen. Netlify Edge Functions guard the editor and assets, and the compiler function independently validates the signed session cookie. Sessions use an HttpOnly, Secure, SameSite=Strict cookie, expire after eight hours, and are invalidated when the class password changes. The Lock workspace button saves the current drafts before signing out.
+
+To change the class password, open **https://crab-code-lab.netlify.app/owner**. Enter the separate owner key, enter the new class password twice, and choose **Save class password**. Changes apply immediately without deploying code. The new password must contain 4–128 characters. The classroom password cannot change owner settings.
+
+The owner key is supplied separately in the private owner-access handoff file. It is excluded from this source repository and ZIP. Keep it private. The owner page never displays the current class password or the owner key.
+
+Password settings use Netlify Blobs with strong consistency. Only a salted scrypt verifier, revision, and change timestamp are stored. Existing sessions stop working on their next request after a password change. The initial verifier is held in `CRAB_PASSWORD_HASH`; it is used only until a password record exists. `CRAB_SESSION_SECRET` signs sessions, and `CRAB_OWNER_KEY_HASH` stores the SHA-256 verifier of the random owner key. The owner explicitly approved the project's standard Free-plan environment-variable storage. Never expose these values through `VITE_` variables, source files, or logs.
+
+The login function is limited to 20 requests per minute per IP/domain; owner settings use 10. These counts include successful requests. Users sharing a school IP may need to wait a minute if many log in together. Local loopback development remains ungated; deployed Netlify builds require the configured access variables.
+
 ## Deploy to Netlify
 
 1. Put this project folder at the root of your Git repository, then import that repository into Netlify. If it is in a subfolder, select that subfolder as the base directory.
