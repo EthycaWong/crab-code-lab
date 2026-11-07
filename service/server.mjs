@@ -1,14 +1,13 @@
 import http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import nodemailer from 'nodemailer';
+import {createEmailDelivery,recipient} from './email.mjs';
 import {compileSketch,validateSketch,issueTicket,verifyTicket} from './compiler.mjs';
 const secret=process.env.COMPILER_TOKEN;
 if(!secret||secret.length<24)throw new Error('Set COMPILER_TOKEN to a random secret of at least 24 characters.');
 const PORT=Number(process.env.PORT||process.env.COMPILER_PORT||4319),HOST=process.env.COMPILER_HOST||'127.0.0.1';
-const recipient='ethan.wong38@gmail.com';
-const emailConfigured=!!(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS&&process.env.SMTP_FROM);
-const transport=emailConfigured?nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:process.env.SMTP_PORT==='465',auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASS},connectionTimeout:10000,socketTimeout:15000}):null;
+const deliverEmail=createEmailDelivery();
+const emailConfigured=!!deliverEmail;
 let active=0;const limits=new Map();
 function authorized(req){const actual=Buffer.from(req.headers.authorization||'');const expected=Buffer.from('Bearer '+secret);return actual.length===expected.length&&timingSafeEqual(actual,expected)}
 function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));}
@@ -32,13 +31,13 @@ const server=http.createServer(async(req,res)=>{
    active++;try{const result=await compileSketch(data);if(result.success)result.ticket=issueTicket(data.code,data.board,secret);return json(res,200,result);}finally{active--;}
   }
   if(!verifyTicket(data.ticket,data.code,data.board,secret))return json(res,409,{error:'Compile this version of the sketch again before submitting.'});
-  if(!transport)return json(res,503,{error:'Direct email is not connected. Use the downloadable email option.'});
+  if(!deliverEmail)return json(res,503,{error:'Direct email is not connected. Use the downloadable email option.'});
   const clean=(value,max)=>typeof value==='string'?value.replace(/[\r\n]/g,' ').trim().slice(0,max):'';
   const student=clean(data.student,100),email=clean(data.email,254),assignment=clean(data.assignment,150),name=clean(data.name,64);
   if(!student||!assignment||!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email))return json(res,400,{error:'Enter your name, a valid email, and the assignment.'});
   const notes=typeof data.notes==='string'?data.notes.slice(0,2000):'';
   const filename=(name.replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'crab_sketch')+'.cpp';
-  await transport.sendMail({from:process.env.SMTP_FROM,to:recipient,replyTo:email,subject:`CRAB submission: ${assignment} — ${student}`,text:`Student: ${student}\nEmail: ${email}\nAssignment: ${assignment}\nBoard: ${data.board}\nSketch: ${name}\n\n${notes}\n\nVerified with Arduino CLI. C++ source attached.`,attachments:[{filename,content:/#\s*include\s*[<"]Arduino\.h[>"]/.test(data.code)?data.code:'#include <Arduino.h>\n\n'+data.code,contentType:'text/x-c++'}]});
+  await deliverEmail({replyTo:email,subject:`CRAB submission: ${assignment} — ${student}`,text:`Student: ${student}\nEmail: ${email}\nAssignment: ${assignment}\nBoard: ${data.board}\nSketch: ${name}\n\n${notes}\n\nVerified with Arduino CLI. C++ source attached.`,attachments:[{filename,content:/#\s*include\s*[<"]Arduino\.h[>"]/.test(data.code)?data.code:'#include <Arduino.h>\n\n'+data.code,contentType:'text/x-c++'}]});
   return json(res,200,{sent:true,recipient});
  }catch(err){console.error('Request failed:',err.message);json(res,err.message.includes('Arduino CLI')?503:400,{error:err.message.includes('Arduino CLI')?err.message:'The request could not be completed. Check your input and try again.'});}
 });

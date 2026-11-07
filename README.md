@@ -1,6 +1,6 @@
 # CRAB Code Lab — Netlify edition
 
-A standalone React/Vite build of the CRAB Arduino workbench, redesigned around the user’s Visual Studio Code reference, with a compact dark workbench, red CRAB accents, and animated panels, file changes, dialogs, and build feedback. It does not use Sites or Cloudflare Workers. Submission recipient: **ethan.wong38@gmail.com**. The editor and Netlify API function are deployed at https://crab-code-lab.netlify.app. Compiler hosting and automatic email are not yet connected.
+A standalone React/Vite build of the CRAB Arduino workbench, redesigned around the user’s Visual Studio Code reference, with a compact dark workbench, red CRAB accents, and animated panels, file changes, dialogs, and build feedback. It does not use Sites or Cloudflare Workers. Submission recipient: **ethan.wong38@gmail.com**. The editor and Netlify API function are deployed at https://crab-code-lab.netlify.app. The compiler is hosted on Render’s free plan. Automatic email is prepared through Resend and still needs an API key.
 
 ## Current deployment
 
@@ -9,7 +9,7 @@ A standalone React/Vite build of the CRAB Arduino workbench, redesigned around t
 - Team: `ethan-wong38`
 - Project ID: `08aeb05d-6761-4d1f-a721-1038020a8f5a`
 - Initial production deploy: `6aee8dffa42124bbb0a353d1`
-- The editor, local draft saving, C++ export, and the API function are published. Compiler verification and automatic email are still pending backend setup.
+- The editor, local draft saving, C++ export, and the API function are published. The free Render compiler has passed real compilation and isolation checks. Automatic Resend email is awaiting its credential.
 - No existing Netlify project was replaced. This is a manual CLI deployment; automatic Git deployments are not configured.
 
 To publish a later revision, install the official Netlify CLI and run `netlify deploy --prod --site 08aeb05d-6761-4d1f-a721-1038020a8f5a` from this project folder. Log in to the same account when prompted. The CLI builds the project and packages its function.
@@ -18,7 +18,7 @@ To publish a later revision, install the official Netlify CLI and run `netlify d
 
 1. Put this project folder at the root of your Git repository, then import that repository into Netlify. If it is in a subfolder, select that subfolder as the base directory.
 2. Use the included `netlify.toml`. It sets **build command `npm run build`**, **publish directory `dist`**, **functions directory `netlify/functions`**, and **Node 24**. Choose Vite or Other if Netlify asks for a framework.
-3. Deploy the separate compiler service described below, then add these environment variables in Netlify with **Functions** scope:
+3. Deploy the separate compiler service described below, then add these environment variables in Netlify using standard environment variables on the Free plan (or **Functions** scope on Pro and above):
    - `COMPILER_URL`: HTTPS origin of your compiler service.
    - `COMPILER_TOKEN`: the matching secret configured on that service.
 4. Redeploy after changing runtime variables. Open the deployed website and check that the footer says **Compiler connected**. Verify a sketch before class.
@@ -29,15 +29,15 @@ The frontend still opens and saves drafts before compiler setup. It displays **C
 
 Import the source project rather than dragging only `dist` into Netlify: the compiler API needs the included Netlify Function, which is outside the static publish directory. A static-only upload supplies the editor and downloads but omits those API routes.
 
-## Render compiler setup (source access pending)
+## Render compiler hosting
 
-`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. Render is connected to Ethan’s workspace, and the private source repository is https://github.com/EthycaWong/crab-code-lab. Render still needs GitHub permission to fetch that repository. No Render service has been created yet.
+`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. Render is connected to Ethan’s workspace, and the private source repository is https://github.com/EthycaWong/crab-code-lab. The free compiler service is https://crab-arduino-compiler.onrender.com, managed at https://dashboard.render.com/web/srv-dbn9abp5efls73am2ufg. Its initial deploy and a subsequent deploy succeeded. Automatic deployments are off; publishing a source commit does not redeploy the compiler until a manual deploy is triggered.
 
 When creating it through the dashboard, select Docker, the repository root as the build context, `./service/Dockerfile` as the Dockerfile, and Free as the instance type. The server accepts Render's `PORT` variable. `/health` exposes only `{ "ok": true }`; compiler status and code endpoints still require the shared token.
 
-Copy the generated `COMPILER_TOKEN` and service HTTPS origin into Netlify's Functions-scoped variables, then redeploy. Verify both a valid sketch and one with a deliberate compiler error through the live editor before using it in class.
+Copy the matching `COMPILER_TOKEN` and service HTTPS origin into Netlify environment variables, then redeploy. The Free plan uses all scopes and contexts; the user explicitly approved that setting for this project. Do not prefix credentials with `VITE_`, commit them, or print them in build logs. Verify both a valid sketch and one with a deliberate compiler error through the live editor before using it in class.
 
-Render's free service sleeps after 15 minutes of inactivity and may take about a minute to wake. The first request may therefore need a retry. Free services also block SMTP ports 25, 465, and 587. Automatic mail needs a supported HTTPS email API, an SMTP provider using an allowed port, or a paid service with appropriate SMTP access. The supplied application currently supports SMTP and the downloadable `.eml` fallback. Free hosting is for preview testing; classroom load has not been measured.
+Render's free service sleeps after 15 minutes of inactivity and may take about a minute to wake. The first request may therefore need a retry. Free services also block SMTP ports 25, 465, and 587. Automatic mail needs a supported HTTPS email API, an SMTP provider using an allowed port, or a paid service with appropriate SMTP access. The application supports Resend over HTTPS, SMTP, and the downloadable `.eml` fallback. Free hosting is for preview testing; classroom load has not been measured.
 
 Official references: [Render free service limits](https://render.com/docs/free), [Docker deployment](https://render.com/docs/docker), [Blueprint configuration](https://render.com/docs/blueprint-spec).
 
@@ -55,7 +55,15 @@ COMPILER_PORT=4319
 
 Use the same token in Netlify. `COMPILER_URL` must point to this reachable HTTPS service; `localhost` on Netlify does not refer to your Mac. The Compose example binds the service to loopback so you can put a reverse proxy in front of it. To build it, run `docker compose -f service/compose.yaml up --build -d` from the project root with its required variables set in your environment.
 
-For automatic email delivery, set these variables **on the compiler host**:
+For free Render hosting, use Resend over HTTPS. Create a free Resend account using **ethan.wong38@gmail.com**, create a Sending access API key, and set **RESEND_API_KEY** on the compiler service’s Render Environment page. Do not put the key in chat, GitHub, Netlify’s frontend, or this README. Keep existing variables in place and redeploy after saving.
+
+The default sender is `CRAB Code Lab <onboarding@resend.dev>`, which Resend permits only for delivery to the Resend account owner’s email. The recipient remains fixed to ethan.wong38@gmail.com. Optionally set **EMAIL_FROM** to an address on your own verified domain later. Free Resend has sending quotas; the current documented daily limit is 100. No paid plan is required for this initial setup.
+
+Email success means the provider accepted the message, not that it reached the inbox. The HTTP delivery path and exact base64-encoded C++ attachment were tested with a mock provider. No actual message has been sent yet.
+
+Official references: [Resend sender restriction](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain), [Resend pricing](https://resend.com/pricing), [Send Email API](https://resend.com/docs/api-reference/emails/send-email).
+
+SMTP is an alternative for hosts that allow it. Set these variables **on the compiler host**:
 
 ```dotenv
 SMTP_HOST=smtp.your-provider.example
@@ -110,7 +118,7 @@ npm test
 
 The static Netlify build and TypeScript checks passed. Netlify handler tests check offline behavior, forwarding of exact source with server-only credentials, trusted client IP handling, and rejection of cross-origin submissions. Arduino CLI tests compile a valid sketch and reject a broken one with a source line, and check submission tickets. Uno, Nano, and Mega builds passed on the development machine.
 
-The VS Code-inspired UI was checked at desktop and mobile sizes, including the explorer, real file tabs, per-file undo history, Go to File, board drawer, dialogs, output toggling, reduced-motion mode, and real compilation from the toolbar. Explorer interpolation and the indeterminate build animation were inspected during use. Netlify production deployment was completed and the live editor and offline API response were checked. The hosting health/authentication test passed. The Docker image passed real compiler and filesystem-isolation checks on a Linux runner. Render deployment and real SMTP delivery remain pending. No real email was sent during development.
+The VS Code-inspired UI was checked at desktop and mobile sizes, including the explorer, real file tabs, per-file undo history, Go to File, board drawer, dialogs, output toggling, reduced-motion mode, and real compilation from the toolbar. Explorer interpolation and the indeterminate build animation were inspected during use. Netlify production deployment was completed and the live editor and offline API response were checked. The hosting health/authentication test passed. The Docker image passed real compiler and filesystem-isolation checks on a Linux runner. Render deployment passed valid and invalid builds plus file-isolation checks. Real email delivery is awaiting a Resend key and a permitted test message. No real email was sent during development.
 
 ## Documentation
 
