@@ -29,9 +29,9 @@ The frontend still opens and saves drafts before compiler setup. It displays **C
 
 Import the source project rather than dragging only `dist` into Netlify: the compiler API needs the included Netlify Function, which is outside the static publish directory. A static-only upload supplies the editor and downloads but omits those API routes.
 
-## Render compiler setup (pending account connection)
+## Render compiler setup (source access pending)
 
-`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. No Render service has been created yet. Connect Render to continue provisioning. A Git repository or container image source must also be connected before Render can build it.
+`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. Render is connected to Ethan’s workspace, and the private source repository is https://github.com/EthycaWong/crab-code-lab. Render still needs GitHub permission to fetch that repository. No Render service has been created yet.
 
 When creating it through the dashboard, select Docker, the repository root as the build context, `./service/Dockerfile` as the Dockerfile, and Free as the instance type. The server accepts Render's `PORT` variable. `/health` exposes only `{ "ok": true }`; compiler status and code endpoints still require the shared token.
 
@@ -67,7 +67,7 @@ SMTP_FROM=CRAB Code Lab <your-verified-sender@example.com>
 
 The recipient is fixed server-side to ethan.wong38@gmail.com. Successful SMTP acceptance is shown as sent; it does not guarantee inbox delivery. If SMTP is absent, a verified sketch can download an `.eml` with the actual `.cpp` attached. Open it in your mail app and send it. If the app opens it read-only, forward it or attach the separately downloaded C++ file to a new message. Downloading an email does not send it.
 
-For classroom use, keep the compiler in a dedicated container. The supplied Compose example uses a nonroot user, read-only filesystem, temporary builds, resource limits, a board allowlist, request limits, and timeouts. The service never executes student binaries. For public multi-tenant use, add per-build sandboxing and network isolation; do not expose a compiler running directly on a personal host. C++ preprocessor includes can access files visible to a compiler, so keep sensitive files out of its filesystem.
+For classroom use, keep the compiler in a dedicated container. The supplied Compose example uses a nonroot user, read-only filesystem, temporary builds, resource limits, a board allowlist, request limits, and timeouts. The service never executes student binaries. The Docker image also runs Arduino CLI under a Linux Landlock filesystem policy and seccomp network restrictions. Each build can write only its own temporary directory and read the toolchain; it cannot read `/app` or `/proc`, or execute files in the student build directory. The sandbox fails closed if the host lacks Landlock ABI 3. The Linux Docker check passed on GitHub Actions, including valid and invalid Arduino builds and denial of service-file and process-environment includes. Recheck on a new host before enabling verification. Local macOS development uses the normal CLI and does not apply this Linux wrapper; do not expose that local compiler publicly.
 
 ## Run locally on this Mac
 
@@ -110,7 +110,7 @@ npm test
 
 The static Netlify build and TypeScript checks passed. Netlify handler tests check offline behavior, forwarding of exact source with server-only credentials, trusted client IP handling, and rejection of cross-origin submissions. Arduino CLI tests compile a valid sketch and reject a broken one with a source line, and check submission tickets. Uno, Nano, and Mega builds passed on the development machine.
 
-The VS Code-inspired UI was checked at desktop and mobile sizes, including the explorer, real file tabs, per-file undo history, Go to File, board drawer, dialogs, output toggling, reduced-motion mode, and real compilation from the toolbar. Explorer interpolation and the indeterminate build animation were inspected during use. Netlify production deployment was completed and the live editor and offline API response were checked. The hosting health/authentication test passed. Docker/Render hosting and real SMTP delivery have not been performed or tested. No real email was sent during development.
+The VS Code-inspired UI was checked at desktop and mobile sizes, including the explorer, real file tabs, per-file undo history, Go to File, board drawer, dialogs, output toggling, reduced-motion mode, and real compilation from the toolbar. Explorer interpolation and the indeterminate build animation were inspected during use. Netlify production deployment was completed and the live editor and offline API response were checked. The hosting health/authentication test passed. The Docker image passed real compiler and filesystem-isolation checks on a Linux runner. Render deployment and real SMTP delivery remain pending. No real email was sent during development.
 
 ## Documentation
 
