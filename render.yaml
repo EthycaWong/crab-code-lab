@@ -1,0 +1,18 @@
+# Initial compiler preview. Upgrade only after checking classroom load.
+services:
+  - type: web
+    name: crab-arduino-compiler
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: COMPILER_TOKEN
+        generateValue: true
+      - key: COMPILER_HOST
+        value: 0.0.0.0
+      - key: COMPILE_CONCURRENCY
+        value: "1"

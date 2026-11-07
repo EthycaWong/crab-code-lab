@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {compileSketch,issueTicket,verifyTicket,validateSketch} from '../service/compiler.mjs';
+const code='#include <Arduino.h>\nvoid setup() { pinMode(LED_BUILTIN, OUTPUT); }\nvoid loop() { digitalWrite(LED_BUILTIN, HIGH); delay(1000); }\n';
+test('real Arduino CLI compiles C++ and reports memory',async()=>{const result=await compileSketch({code,board:'uno'});assert.equal(result.success,true,result.output);assert.ok(result.flash>0);assert.ok(result.ram>=0);});
+test('real compiler rejects unknown functions with source location',async()=>{const result=await compileSketch({code:code.replace('delay(1000)','madeUpFunction(1000)'),board:'uno'});assert.equal(result.success,false);assert.ok(result.diagnostics.some(d=>d.line===3&&d.severity==='error'&&d.message.includes('madeUpFunction')),JSON.stringify(result));});
+test('submission verification binds a ticket to exact source and board',()=>{const secret='test-secret-not-a-runtime-credential';const ticket=issueTicket(code,'uno',secret);assert.ok(verifyTicket(ticket,code,'uno',secret));assert.equal(verifyTicket(ticket,code+' ','uno',secret),false);assert.equal(verifyTicket(ticket,code,'mega',secret),false);assert.equal(verifyTicket(ticket,code,'uno','different'),false);assert.equal(verifyTicket('bad-ticket',code,'uno',secret),false);});
+test('reject invalid boards and oversized requests',()=>{assert.throws(()=>validateSketch({code,board:'../../etc'}));assert.throws(()=>validateSketch({code:'a'.repeat(48001),board:'uno'}));assert.throws(()=>validateSketch({code:'',board:'uno'}));});

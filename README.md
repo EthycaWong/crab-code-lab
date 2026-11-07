@@ -1,0 +1,122 @@
+# CRAB Code Lab — Netlify edition
+
+A standalone React/Vite build of the CRAB Arduino workbench, redesigned around the user’s Visual Studio Code reference, with a compact dark workbench, red CRAB accents, and animated panels, file changes, dialogs, and build feedback. It does not use Sites or Cloudflare Workers. Submission recipient: **ethan.wong38@gmail.com**. The editor and Netlify API function are deployed at https://crab-code-lab.netlify.app. Compiler hosting and automatic email are not yet connected.
+
+## Current deployment
+
+- Live editor: https://crab-code-lab.netlify.app
+- Netlify project: https://app.netlify.com/projects/crab-code-lab
+- Team: `ethan-wong38`
+- Project ID: `08aeb05d-6761-4d1f-a721-1038020a8f5a`
+- Initial production deploy: `6aee8dffa42124bbb0a353d1`
+- The editor, local draft saving, C++ export, and the API function are published. Compiler verification and automatic email are still pending backend setup.
+- No existing Netlify project was replaced. This is a manual CLI deployment; automatic Git deployments are not configured.
+
+To publish a later revision, install the official Netlify CLI and run `netlify deploy --prod --site 08aeb05d-6761-4d1f-a721-1038020a8f5a` from this project folder. Log in to the same account when prompted. The CLI builds the project and packages its function.
+
+## Deploy to Netlify
+
+1. Put this project folder at the root of your Git repository, then import that repository into Netlify. If it is in a subfolder, select that subfolder as the base directory.
+2. Use the included `netlify.toml`. It sets **build command `npm run build`**, **publish directory `dist`**, **functions directory `netlify/functions`**, and **Node 24**. Choose Vite or Other if Netlify asks for a framework.
+3. Deploy the separate compiler service described below, then add these environment variables in Netlify with **Functions** scope:
+   - `COMPILER_URL`: HTTPS origin of your compiler service.
+   - `COMPILER_TOKEN`: the matching secret configured on that service.
+4. Redeploy after changing runtime variables. Open the deployed website and check that the footer says **Compiler connected**. Verify a sketch before class.
+
+Netlify’s Functions runtime reads these variables from its environment. Do not put secrets in `netlify.toml`, public files, or variables prefixed with `VITE_`.
+
+The frontend still opens and saves drafts before compiler setup. It displays **Compiler offline** until the service is connected. Verification and submission remain unavailable until real compilation succeeds.
+
+Import the source project rather than dragging only `dist` into Netlify: the compiler API needs the included Netlify Function, which is outside the static publish directory. A static-only upload supplies the editor and downloads but omits those API routes.
+
+## Render compiler setup (pending account connection)
+
+`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. No Render service has been created yet. Connect Render to continue provisioning. A Git repository or container image source must also be connected before Render can build it.
+
+When creating it through the dashboard, select Docker, the repository root as the build context, `./service/Dockerfile` as the Dockerfile, and Free as the instance type. The server accepts Render's `PORT` variable. `/health` exposes only `{ "ok": true }`; compiler status and code endpoints still require the shared token.
+
+Copy the generated `COMPILER_TOKEN` and service HTTPS origin into Netlify's Functions-scoped variables, then redeploy. Verify both a valid sketch and one with a deliberate compiler error through the live editor before using it in class.
+
+Render's free service sleeps after 15 minutes of inactivity and may take about a minute to wake. The first request may therefore need a retry. Free services also block SMTP ports 25, 465, and 587. Automatic mail needs a supported HTTPS email API, an SMTP provider using an allowed port, or a paid service with appropriate SMTP access. The supplied application currently supports SMTP and the downloadable `.eml` fallback. Free hosting is for preview testing; classroom load has not been measured.
+
+Official references: [Render free service limits](https://render.com/docs/free), [Docker deployment](https://render.com/docs/docker), [Blueprint configuration](https://render.com/docs/blueprint-spec).
+
+## Compiler and email service
+
+The Netlify Function securely forwards `/api/status`, `/api/compile`, and `/api/submit` to the Node service in `service/`. This service runs the actual Arduino toolchain; the browser never receives the compiler token or SMTP credentials.
+
+The service needs Node 22.13+, Arduino CLI, and the `arduino:avr` core. A Dockerfile and Compose configuration are included. Run it on a Node/container host behind HTTPS. Set:
+
+```dotenv
+COMPILER_TOKEN=your-random-secret-at-least-24-characters
+COMPILER_HOST=0.0.0.0
+COMPILER_PORT=4319
+```
+
+Use the same token in Netlify. `COMPILER_URL` must point to this reachable HTTPS service; `localhost` on Netlify does not refer to your Mac. The Compose example binds the service to loopback so you can put a reverse proxy in front of it. To build it, run `docker compose -f service/compose.yaml up --build -d` from the project root with its required variables set in your environment.
+
+For automatic email delivery, set these variables **on the compiler host**:
+
+```dotenv
+SMTP_HOST=smtp.your-provider.example
+SMTP_PORT=587
+SMTP_USER=your-user
+SMTP_PASS=your-provider-app-password
+SMTP_FROM=CRAB Code Lab <your-verified-sender@example.com>
+```
+
+The recipient is fixed server-side to ethan.wong38@gmail.com. Successful SMTP acceptance is shown as sent; it does not guarantee inbox delivery. If SMTP is absent, a verified sketch can download an `.eml` with the actual `.cpp` attached. Open it in your mail app and send it. If the app opens it read-only, forward it or attach the separately downloaded C++ file to a new message. Downloading an email does not send it.
+
+For classroom use, keep the compiler in a dedicated container. The supplied Compose example uses a nonroot user, read-only filesystem, temporary builds, resource limits, a board allowlist, request limits, and timeouts. The service never executes student binaries. For public multi-tenant use, add per-build sandboxing and network isolation; do not expose a compiler running directly on a personal host. C++ preprocessor includes can access files visible to a compiler, so keep sensitive files out of its filesystem.
+
+## Run locally on this Mac
+
+```sh
+npm ci
+npm run lab
+```
+
+Open the Local URL printed in the terminal, normally http://127.0.0.1:5173. Keep the terminal open. Ctrl+C stops the compiler and website. On macOS you can also run **Launch CRAB.command**.
+
+The launcher creates an ignored `.dev.vars` containing a random compiler secret and the local service URL. Add optional SMTP settings to that file and restart to enable direct mail locally.
+
+Arduino CLI and an AVR core must be installed:
+
+```sh
+arduino-cli core update-index
+arduino-cli core install arduino:avr@1.8.8
+```
+
+`npm run dev` starts only the editor server; `npm run lab` starts the editor and compiler together. For `npm run dev`, provide `COMPILER_URL` and `COMPILER_TOKEN` in the process environment to connect a compiler. Local preview middleware forwards requests through the same API handler as Netlify.
+
+## Editor behavior
+
+- Arduino-aware C++ colors, suggestions, indentation, search, bracket matching, line numbers, undo, and clickable compiler errors.
+- Multiple sketches, starter examples, single-file .cpp/.ino imports, local browser autosave, and .cpp export. Drafts are tied to the browser and site origin. Export backups when moving to a different domain/device or clearing storage.
+- Real Arduino CLI compilation for Uno, classic Nano (ATmega328P/new bootloader), and Mega 2560. No physical board is needed for verification. Verification does not simulate a circuit or upload firmware.
+- Code or board changes invalidate the previous compile. Automatic submissions use a signed ticket bound to the exact verified source and board.
+
+The editor uses **C++ files**, like .cpp tabs in Arduino IDE. `Arduino.h` is included in builds and exports. Declare functions before calling them; this editor does not generate .ino function prototypes. Importing an .ino converts it to C++ and may require explicit declarations. Additional libraries must be installed on the compiler host; multi-file/library editing is not included.
+
+Cmd/Ctrl+P opens Go to File. Cmd/Ctrl+B toggles the explorer. Cmd/Ctrl+J toggles output. Arrow keys navigate file tabs. Editor settings include font size and a reduced-motion option. Cmd/Ctrl+Enter verifies. Cmd/Ctrl+S downloads C++. Cmd/Ctrl+F searches. Ctrl+Space suggests. Press Escape then Tab to move out of the editor with the keyboard.
+
+## Validation and limits
+
+```sh
+npm run build
+npm run typecheck
+npm test
+```
+
+The static Netlify build and TypeScript checks passed. Netlify handler tests check offline behavior, forwarding of exact source with server-only credentials, trusted client IP handling, and rejection of cross-origin submissions. Arduino CLI tests compile a valid sketch and reject a broken one with a source line, and check submission tickets. Uno, Nano, and Mega builds passed on the development machine.
+
+The VS Code-inspired UI was checked at desktop and mobile sizes, including the explorer, real file tabs, per-file undo history, Go to File, board drawer, dialogs, output toggling, reduced-motion mode, and real compilation from the toolbar. Explorer interpolation and the indeterminate build animation were inspected during use. Netlify production deployment was completed and the live editor and offline API response were checked. The hosting health/authentication test passed. Docker/Render hosting and real SMTP delivery have not been performed or tested. No real email was sent during development.
+
+## Documentation
+
+- [Netlify build configuration](https://docs.netlify.com/build/configure-builds/file-based-configuration/)
+- [Netlify Functions](https://docs.netlify.com/build/functions/get-started/)
+- [Runtime environment variables](https://docs.netlify.com/build/functions/environment-variables/)
+- [Arduino CLI](https://docs.arduino.cc/arduino-cli/getting-started/)
+
+Built with React, Vite, CodeMirror, Lucide, and Arduino CLI. Fonts: DM Sans, Space Grotesk, IBM Plex Mono; license notices are in public/fonts. CRAB logo supplied by the user. Board artwork is illustrative. Arduino is a trademark of Arduino SA; this project is not affiliated with Arduino.

@@ -1,0 +1,24 @@
+services:
+  compiler:
+    build:
+      context: ..
+      dockerfile: service/Dockerfile
+    ports:
+      - "127.0.0.1:4319:4319"
+    environment:
+      COMPILER_TOKEN: ${COMPILER_TOKEN:?Set a random compiler token}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,noexec,size=384m,uid=1000,gid=1000
+    mem_limit: 768m
+    cpus: 2
+    pids_limit: 80
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
