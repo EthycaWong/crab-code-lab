@@ -8,7 +8,7 @@ A standalone React/Vite build of the CRAB Arduino workbench, redesigned around t
 - Netlify project: https://app.netlify.com/projects/crab-code-lab
 - Team: `ethan-wong38`
 - Project ID: `08aeb05d-6761-4d1f-a721-1038020a8f5a`
-- Current production deploy: `6aef4e93e5b1dd95bd4051fa`
+- Current production deploy: `6afa5a6dbef15ee81d0c28c5`
 - The editor, local draft saving, C++ export, API function, and real Arduino compilation are live. The public Verify button compiled Blink successfully (924 bytes of program storage and 9 bytes of RAM). The live Netlify API also rejected invalid C++ with source diagnostics. Automatic Resend email is live. The authorized test submission arrived in the teacher’s inbox with its complete C++ attachment.
 - No existing Netlify project was replaced. This is a manual CLI deployment; automatic Git deployments are not configured.
 
@@ -43,7 +43,7 @@ Import the source project rather than dragging only `dist` into Netlify: the com
 
 ## Render compiler hosting
 
-`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. Render is connected to Ethan’s workspace, and the private source repository is https://github.com/EthycaWong/crab-code-lab. The free compiler service is https://crab-arduino-compiler.onrender.com, managed at https://dashboard.render.com/web/srv-dbn9abp5efls73am2ufg. The current deploy is `dep-dbnkbqtg1s2s73cupjs0` from commit `980dfd7`; it includes Resend support and is live. Automatic deployments are off; publishing a source commit does not redeploy the compiler until a manual deploy is triggered.
+`render.yaml` defines a new free Docker web service using `service/Dockerfile`, a generated compiler token, one concurrent compile, and `/health` as its health check. Render is connected to Ethan’s workspace, and the private source repository is https://github.com/EthycaWong/crab-code-lab. The free compiler service is https://crab-arduino-compiler.onrender.com, managed at https://dashboard.render.com/web/srv-dbn9abp5efls73am2ufg. The current deploy is `dep-dbt5i56c6qcc73apukfg` from commit `7bbedb8`; it includes optional verification for email and the classroom library catalog and is live. Automatic deployments are off; publishing a source commit does not redeploy the compiler until a manual deploy is triggered.
 
 When creating it through the dashboard, select Docker, the repository root as the build context, `./service/Dockerfile` as the Dockerfile, and Free as the instance type. The server accepts Render's `PORT` variable. `/health` exposes only `{ "ok": true }`; compiler status and code endpoints still require the shared token.
 
@@ -130,7 +130,7 @@ For local compilation, run `npm run libraries` after installing the AVR core. To
 
 The catalog is defined in `service/libraries.mjs`. To add another library, include its exact Library Manager name, header, and version there, list any dependencies explicitly, then rebuild/deploy the compiler. Downloads take place at image build time; student compilation stays offline inside its sandbox. Students do not need to install these libraries individually.
 
-The optional-email path was tested through the real HTTP endpoint against a local capture-only SMTP server with Arduino CLI unavailable. Uncompiled code was accepted and labeled not verified. No additional real email was sent. Servo compiled for all three supported boards, and the bundled library smoke sketch compiled on Uno.
+The optional-email path was tested through the real HTTP endpoint against a local capture-only SMTP server with Arduino CLI unavailable. Uncompiled code was accepted and labeled not verified. No additional real email was sent. Servo compiled for all three supported boards, and the bundled library smoke sketch compiled on Uno. These checks passed both in GitHub Actions Docker validation (run 43784824258) and on the deployed Render compiler. The authenticated Netlify preview reported all 15 library entries and exposed direct email before verification.
 
 ## Validation and limits
 
