@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 export const boards={uno:'arduino:avr:uno',nano:'arduino:avr:nano:cpu=atmega328',mega:'arduino:avr:mega:cpu=atmega2560'};
 export function validateSketch(data){
- if(!data||typeof data.code!=='string'||!data.code.trim())throw new Error('Write some code before compiling.');
+ if(!data||typeof data.code!=='string'||!data.code.trim())throw new Error('Write some code first.');
  if(Buffer.byteLength(data.code)>48000)throw new Error('Keep sketches under 48 KB.');
  if(!Object.hasOwn(boards,data.board))throw new Error('Select a supported Arduino board.');
  return data;

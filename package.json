@@ -11,6 +11,7 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "compiler": "node --env-file-if-exists=.dev.vars service/server.mjs",
+    "libraries": "node service/install-libraries.mjs",
     "lab": "node scripts/lab.mjs",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit"

@@ -8,6 +8,7 @@ export const STARTERS = [
   { id: 'serial', title: 'Serial', description: 'Send a message over serial.', level: 'Serial', code: `#include <Arduino.h>\n\nvoid setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  Serial.println("Hello from CRAB!");\n  delay(1000);\n}\n` },
   { id: 'analog', title: 'Analog input', description: 'Read an analog sensor on A0.', level: 'Sensors', code: `#include <Arduino.h>\n\nconst int sensorPin = A0;\n\nvoid setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int reading = analogRead(sensorPin);\n  Serial.println(reading);\n  delay(100);\n}\n` },
   { id: 'empty', title: 'Empty sketch', description: 'Start with a clean sketch.', level: 'Blank', code: `#include <Arduino.h>\n\nvoid setup() {\n  // Run once when the board starts.\n}\n\nvoid loop() {\n  // Repeated code goes here.\n}\n` },
+  { id: 'servo', title: 'Servo Sweep', description: 'Move a servo using Servo.h.', level: 'Motors', code: `#include <Arduino.h>\n#include <Servo.h>\n\nServo arm;\n\nvoid setup() {\n  arm.attach(9);\n}\n\nvoid loop() {\n  for (int angle = 0; angle <= 180; angle++) {\n    arm.write(angle);\n    delay(15);\n  }\n  for (int angle = 180; angle >= 0; angle--) {\n    arm.write(angle);\n    delay(15);\n  }\n}\n` },
 ];
 export type CompileResult = { success: boolean; output: string; diagnostics: {line:number;column:number;message:string;severity:'error'|'warning'}[]; flash?: number; ram?: number; duration?: number; ticket?: string; };
 export type Sketch = { id:string; name:string; code:string; board:string; updated:number };

@@ -2,7 +2,9 @@ import http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import {createEmailDelivery,recipient} from './email.mjs';
-import {compileSketch,validateSketch,issueTicket,verifyTicket} from './compiler.mjs';
+import {compileSketch,validateSketch,issueTicket} from './compiler.mjs';
+import {prepareSubmission} from './submission.mjs';
+import {LIBRARIES} from './libraries.mjs';
 const secret=process.env.COMPILER_TOKEN;
 if(!secret||secret.length<24)throw new Error('Set COMPILER_TOKEN to a random secret of at least 24 characters.');
 const PORT=Number(process.env.PORT||process.env.COMPILER_PORT||4319),HOST=process.env.COMPILER_HOST||'127.0.0.1';
@@ -19,7 +21,7 @@ const server=http.createServer(async(req,res)=>{
  if(!authorized(req))return json(res,401,{error:'Compiler authentication required.'});
  if(req.method==='GET'&&path==='/status'){
   const cli=process.env.ARDUINO_CLI||'arduino-cli';const child=spawn(cli,['version'],{shell:false,stdio:'ignore',env:{PATH:process.env.PATH,HOME:process.env.HOME,LANG:'C.UTF-8'}});let answered=false;
-  const done=ok=>{if(answered)return;answered=true;json(res,200,{compiler:ok,email:emailConfigured,recipient,message:ok?'Arduino CLI connected.':'Arduino CLI is unavailable.'})};const timer=setTimeout(()=>{child.kill();done(false)},4000);
+  const done=ok=>{if(answered)return;answered=true;json(res,200,{compiler:ok,email:emailConfigured,recipient,libraries:LIBRARIES,message:ok?'Arduino CLI connected.':'Arduino CLI is unavailable.'})};const timer=setTimeout(()=>{child.kill();done(false)},4000);
   child.on('error',()=>{clearTimeout(timer);done(false)});child.on('close',code=>{clearTimeout(timer);done(code===0)});return;
  }
  if(req.method!=='POST'||!['/compile','/submit'].includes(path))return json(res,404,{error:'Not found.'});
@@ -30,15 +32,10 @@ const server=http.createServer(async(req,res)=>{
    if(active>=Number(process.env.COMPILE_CONCURRENCY||2))return json(res,429,{error:'The compiler is busy with other students. Try again in a moment.'});
    active++;try{const result=await compileSketch(data);if(result.success)result.ticket=issueTicket(data.code,data.board,secret);return json(res,200,result);}finally{active--;}
   }
-  if(!verifyTicket(data.ticket,data.code,data.board,secret))return json(res,409,{error:'Compile this version of the sketch again before submitting.'});
   if(!deliverEmail)return json(res,503,{error:'Direct email is not connected. Use the downloadable email option.'});
-  const clean=(value,max)=>typeof value==='string'?value.replace(/[\r\n]/g,' ').trim().slice(0,max):'';
-  const student=clean(data.student,100),email=clean(data.email,254),assignment=clean(data.assignment,150),name=clean(data.name,64);
-  if(!student||!assignment||!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email))return json(res,400,{error:'Enter your name, a valid email, and the assignment.'});
-  const notes=typeof data.notes==='string'?data.notes.slice(0,2000):'';
-  const filename=(name.replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'crab_sketch')+'.cpp';
-  await deliverEmail({replyTo:email,subject:`CRAB submission: ${assignment} — ${student}`,text:`Student: ${student}\nEmail: ${email}\nAssignment: ${assignment}\nBoard: ${data.board}\nSketch: ${name}\n\n${notes}\n\nVerified with Arduino CLI. C++ source attached.`,attachments:[{filename,content:/#\s*include\s*[<"]Arduino\.h[>"]/.test(data.code)?data.code:'#include <Arduino.h>\n\n'+data.code,contentType:'text/x-c++'}]});
-  return json(res,200,{sent:true,recipient});
+  const submission=prepareSubmission(data,secret);
+  await deliverEmail(submission.message);
+  return json(res,200,{sent:true,recipient,verified:submission.verified});
  }catch(err){console.error('Request failed:',err.message);json(res,err.message.includes('Arduino CLI')?503:400,{error:err.message.includes('Arduino CLI')?err.message:'The request could not be completed. Check your input and try again.'});}
 });
 server.requestTimeout=70000;server.headersTimeout=10000;server.listen(PORT,HOST,()=>console.log(`CRAB compiler service: http://${HOST}:${server.address().port} • email ${emailConfigured?'connected':'not configured'}`));

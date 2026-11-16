@@ -14,6 +14,8 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 RUN mkdir -p /home/node/.arduino15 /home/node/Arduino && chown -R node:node /home/node
 USER node
 RUN arduino-cli core update-index && arduino-cli core install arduino:avr@1.8.8
+COPY --chown=node:node service/libraries.mjs service/install-libraries.mjs ./service/
+RUN node service/install-libraries.mjs
 COPY --chown=node:node service/ ./service/
 COPY --from=sandbox-builder /usr/local/bin/crab-sandbox /usr/local/bin/crab-sandbox
 ENV COMPILER_HOST=0.0.0.0 COMPILER_PORT=4319 COMPILE_TMPDIR=/tmp HOME=/home/node ARDUINO_CLI=/usr/local/bin/crab-sandbox

@@ -37,7 +37,7 @@ The login function is limited to 20 requests per minute per IP/domain; owner set
 
 Netlify’s Functions runtime reads these variables from its environment. Do not put secrets in `netlify.toml`, public files, or variables prefixed with `VITE_`.
 
-The live site displays **Compiler connected** while the Render service is awake. Render Free sleeps after idle periods; the first request can take about a minute to wake it and may need a retry. Verification and submission always require a real successful compile of the current source.
+The live site displays **Compiler connected** while the Render service is awake. Render Free sleeps after idle periods; the first request can take about a minute to wake it and may need a retry. Verification is optional for email. Any nonempty sketch can be sent, including unfinished code or code with compiler errors. The email reports whether this exact source has a current successful verification.
 
 Import the source project rather than dragging only `dist` into Netlify: the compiler API needs the included Netlify Function, which is outside the static publish directory. A static-only upload supplies the editor and downloads but omits those API routes.
 
@@ -85,7 +85,7 @@ SMTP_PASS=your-provider-app-password
 SMTP_FROM=CRAB Code Lab <your-verified-sender@example.com>
 ```
 
-The recipient is fixed server-side to ethan.wong38@gmail.com. Successful SMTP acceptance is shown as sent; it does not guarantee inbox delivery. If no email provider is configured, a verified sketch can download an `.eml` with the actual `.cpp` attached. Open it in your mail app and send it. If the app opens it read-only, forward it or attach the separately downloaded C++ file to a new message. Downloading an email does not send it.
+The recipient is fixed server-side to ethan.wong38@gmail.com. Successful SMTP acceptance is shown as sent; it does not guarantee inbox delivery. If no email provider is configured, a sketch can download an `.eml` with the actual `.cpp` attached. Open it in your mail app and send it. If the app opens it read-only, forward it or attach the separately downloaded C++ file to a new message. Downloading an email does not send it.
 
 For classroom use, keep the compiler in a dedicated container. The supplied Compose example uses a nonroot user, read-only filesystem, temporary builds, resource limits, a board allowlist, request limits, and timeouts. The service never executes student binaries. The Docker image also runs Arduino CLI under a Linux Landlock filesystem policy and seccomp network restrictions. Each build can write only its own temporary directory and read the toolchain; it cannot read `/app` or `/proc`, or execute files in the student build directory. The sandbox fails closed if the host lacks Landlock ABI 3. The Linux Docker check passed on GitHub Actions, including valid and invalid Arduino builds and denial of service-file and process-environment includes. Recheck on a new host before enabling verification. Local macOS development uses the normal CLI and does not apply this Linux wrapper; do not expose that local compiler publicly.
 
@@ -114,11 +114,23 @@ arduino-cli core install arduino:avr@1.8.8
 - Arduino-aware C++ colors, suggestions, indentation, search, bracket matching, line numbers, undo, and clickable compiler errors.
 - Multiple sketches, starter examples, single-file .cpp/.ino imports, local browser autosave, and .cpp export. Drafts are tied to the browser and site origin. Export backups when moving to a different domain/device or clearing storage.
 - Real Arduino CLI compilation for Uno, classic Nano (ATmega328P/new bootloader), and Mega 2560. No physical board is needed for verification. Verification does not simulate a circuit or upload firmware.
-- Code or board changes invalidate the previous compile. Automatic submissions use a signed ticket bound to the exact verified source and board.
+- Code or board changes invalidate the previous compile. Email submission does not require compilation. An optional signed ticket, bound to the exact source and board, lets the server label a submission as verified; missing, stale, or invalid tickets are sent as not verified.
 
-The editor uses **C++ files**, like .cpp tabs in Arduino IDE. `Arduino.h` is included in builds and exports. Declare functions before calling them; this editor does not generate .ino function prototypes. Importing an .ino converts it to C++ and may require explicit declarations. Additional libraries must be installed on the compiler host; multi-file/library editing is not included.
+The editor uses **C++ files**, like .cpp tabs in Arduino IDE. `Arduino.h` is included in builds and exports. Declare functions before calling them; this editor does not generate .ino function prototypes. Importing an .ino converts it to C++ and may require explicit declarations. The bundled library catalog below is already installed on the hosted compiler. Multi-file and uploaded custom-library editing are not included.
 
 Cmd/Ctrl+P opens Go to File. Cmd/Ctrl+B toggles the explorer. Cmd/Ctrl+J toggles output. Arrow keys navigate file tabs. Editor settings include font size and a reduced-motion option. Cmd/Ctrl+Enter verifies. Cmd/Ctrl+S downloads C++. Cmd/Ctrl+F searches. Ctrl+Space suggests. Press Escape then Tab to move out of the editor with the keyboard.
+
+## Included Arduino libraries
+
+Open **Libraries** in the activity rail to see headers and add an include to the current sketch. Include completion and common library class suggestions are available in the editor. **Servo Sweep** is a working starter example.
+
+The compiler image installs pinned versions from Arduino Library Manager: Servo 1.3.0, Stepper 1.1.3, LiquidCrystal 1.0.7, DHT sensor library 1.4.7, Adafruit Unified Sensor 1.1.15, Adafruit NeoPixel 1.15.5, NewPing 1.9.7, Bounce2 2.71.0, OneWire 2.3.8, DallasTemperature 4.0.6, and AccelStepper 1.64.0. Wire, SPI, EEPROM, and SoftwareSerial are provided by the AVR core.
+
+For local compilation, run `npm run libraries` after installing the AVR core. To use an isolated sketchbook, set `ARDUINO_CONFIG_FILE` to an Arduino CLI configuration with your chosen user directory before running that command and starting the service.
+
+The catalog is defined in `service/libraries.mjs`. To add another library, include its exact Library Manager name, header, and version there, list any dependencies explicitly, then rebuild/deploy the compiler. Downloads take place at image build time; student compilation stays offline inside its sandbox. Students do not need to install these libraries individually.
+
+The optional-email path was tested through the real HTTP endpoint against a local capture-only SMTP server with Arduino CLI unavailable. Uncompiled code was accepted and labeled not verified. No additional real email was sent. Servo compiled for all three supported boards, and the bundled library smoke sketch compiled on Uno.
 
 ## Validation and limits
 
